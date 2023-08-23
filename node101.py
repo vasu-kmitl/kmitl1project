@@ -4,28 +4,26 @@
 # Ag Instrumentation & IoT Class 1/2023
 # Dept. of Agricultural Engineering, KMITL 
 ###########################################
-# https://mpython.readthedocs.io/en/master/library/mPython/umqtt.simple.html
-# https://pypi.org/project/ujson/
-
-import dht
-from machine import Pin    # Required for dht library
+from machine import Pin, Timer
 import ujson
 import network
 from time import sleep
 from umqtt.simple import MQTTClient  
+import dht
 
+# Use your WiFi Configuration
 WiFi_ssid = 'vNet'
 WiFi_pwd = 'poiuytrewq'
 
+# Use your NETPIE Device Configuration
 MQTT_BROKER    = 'mqtt.netpie.io'
 MQTT_CLIENT_ID = 'c9925f3c-e9f7-4937-803a-0b0d48900652'
 MQTT_TOKEN     = 'QRR6gu8UaGBFbcM6wUjX7ApyowC9XYcL'
 MQTT_SECRET    = '7ECnH4LwK4PLYtyAzEfStwk6C46AQrAQ'
 
 # Connect to WiFi
-sta_if = network.WLAN(network.STA_IF)   # Set WiFi Mode to Station
+sta_if = network.WLAN(network.STA_IF)   # Station Mode
 sta_if.active(True)
-
 sta_if.connect(WiFi_ssid,WiFi_pwd)  # Start Connecting
 print('WiFi ...', end='')
 while not sta_if.isconnected():
@@ -58,10 +56,22 @@ payload = ujson.dumps({'data':{'node':'101'}})
 client.publish('@shadow/data/update', payload)
 
 sensor = dht.DHT11(Pin(15))
+
+timer = Timer(0)
+
+status_led = Pin(2,Pin.OUT) # Build-in LED
+
+def status_blink(num):
+    for i in range(num):
+        status_led.on()
+        sleep(0.1)    
+        status_led.off()
+        sleep(0.1)    
+
 i=0
-while True:
+def timerISR(timer):
+    global i
     try:
-        sleep(5)
         sensor.measure()
         sensor_data = {
             'data':{
@@ -70,12 +80,17 @@ while True:
                 }
             }
         payload = ujson.dumps(sensor_data)
+        print('[', str(i),'] -->', payload)
         client.publish('@shadow/data/update', payload)
-    #    client.publish('@msg/101', payload)
-        print(i, end='')
+        status_blink(1)
         i = i+1
-        print(" -->", payload)
     except:
-        pass
-  
+        print('[', str(i),'] Error')
+        status_blink(2)
+
+timer.init(period=5000, mode=Timer.PERIODIC, callback=timerISR)
+
+while True:
+    pass
+
 client.disconnect()
