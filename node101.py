@@ -58,8 +58,10 @@ payload = ujson.dumps({'data':{'node':'101'}})
 client.publish('@shadow/data/update', payload)
 
 sensor = dht.DHT11(Pin(15))
+i=0
 while True:
     try:
+        sleep(5)
         sensor.measure()
         sensor_data = {
             'data':{
@@ -73,9 +75,7 @@ while True:
         print(i, end='')
         i = i+1
         print(" -->", payload)
-        sleep(5)
     except:
         pass
   
 client.disconnect()
-
