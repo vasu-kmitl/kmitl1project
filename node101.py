@@ -1,9 +1,11 @@
-###########################################
+#############################################
 # Node 101: Main node for the Greenhoude
 # KMITL One Project 2023
-# Ag Instrumentation & IoT Class 1/2023
-# Dept. of Agricultural Engineering, KMITL 
-###########################################
+# Rev. 1a - 25 Aug 2023
+#   Vasu Udompetaikul & 
+#   Ag Instru & IoT Class 1/2023
+#   Dept. of Agricultural Engineering, KMITL 
+#############################################
 
 from machine import Pin, Timer
 import time
