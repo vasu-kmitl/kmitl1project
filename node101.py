@@ -14,8 +14,10 @@ from umqtt.simple import MQTTClient
 import dht
 
 # Use your WiFi Configuration
-WiFi_ssid = 'vNet'
-WiFi_pwd = 'poiuytrewq'
+WiFi_ssid = 'TInhuad_2G'
+WiFi_pwd = 'Patiparn'
+# WiFi_ssid = 'vNet'
+# WiFi_pwd = 'poiuytrewq'
 
 # Use your NETPIE Device Configuration
 MQTT_BROKER    = 'mqtt.netpie.io'
@@ -31,11 +33,12 @@ print('WiFi ...', end='')
 while not sta_if.isconnected():
     print('.', end='')
     sleep(0.5)
-print(' Connected to', sta_if.ifconfig()[0])
+print(' Connected to', WiFi_ssid, 'on', sta_if.ifconfig()[0])
 
 # Connect to MQTT broker
 client = MQTTClient(MQTT_CLIENT_ID, MQTT_BROKER,
-                    user=MQTT_TOKEN, password=MQTT_SECRET)
+                    user=MQTT_TOKEN, password=MQTT_SECRET,
+                    keepalive=60)
 print('MQTT ...', end='')
 while True:
     try:
@@ -44,20 +47,25 @@ while True:
             break
     except:
         print('.', end='')
+        sleep(0.5)
 
 # Callback function for responding to the subscribed topics
 def on_message(topic,msg):
     print("<-- ", end='')
     print(msg)
 
-#client.setBufferSize(512)
+#client.setBufferSize(512) #Doesn't work / Find how to increase the buffer
 client.set_callback(on_message)
 client.subscribe('@shadow/data/updated')
 
 payload = ujson.dumps({'data':{'node':'101'}})
 client.publish('@shadow/data/update', payload)
 
-sensor = dht.DHT11(Pin(15))
+sensor = dht.DHT22(Pin(15))
+try:
+    sensor.measure()	# The first reading is typically an error
+except:
+    pass
 
 timer = Timer(0)
 
@@ -66,45 +74,48 @@ status_led = Pin(2,Pin.OUT) # Build-in LED
 def status_blink(num):
     for i in range(num):
         status_led.on()
-        sleep(0.1)    
+        sleep(0.05)    
         status_led.off()
-        sleep(0.1)
+        sleep(0.15)
         
-t = None
+t = time.localtime()
+t_str = ('{}:{}'.format(t[3], t[4]))
+#t_str = ('{}-{}-{} :{}:{}'.format(t[0],t[1],t[2],t[3],t[4],t[5]))
+print('Start at', t_str)
+
 def timerISR(timer):
-    global i,t
+    global t, t_str
     err_status = 1 # No Error (One blink)
     try:
         sensor.measure()
-        sensor_data = {
-            'data':{
-                'temp': sensor.temperature(),
-                'humid': sensor.humidity()
-                }
-            }
     except:
         sensor_data = None
         err_status = 4 # Sensor error (4 blinks)
         
+    sensor_data = {
+        'data':{
+            'temp': sensor.temperature(),
+            'humid': sensor.humidity()
+            }
+        }
     payload = ujson.dumps(sensor_data)
     print('-->', payload)
 
     try:
-#        client.publish('@shadow/data/update', payload) #didn't work ?????
-        client.publish('@msg/n101', payload)  # Worked great!!!
+        client.publish('@shadow/data/update', payload)
     except:
         err_status = 3 # MQTT error (3 blinks)
+        client.connect() # Try to reconnect
     
-    if err_status == 1:
+    if err_status == 1:	# No error
         t = time.localtime()
+        t_str = ('{}:{}'.format(t[3], t[4]))
     else:
-        print('Err', str(err_status),'at', str(t))
+        print('Err', str(err_status),'at', t_str)
     
     status_blink(err_status)
 
 timer.init(period=5000, mode=Timer.PERIODIC, callback=timerISR)
 
 while True:
-    pass
-
-#client.disconnect()
+    client.check_msg()
