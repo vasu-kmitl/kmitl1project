@@ -4,7 +4,9 @@
 # Ag Instrumentation & IoT Class 1/2023
 # Dept. of Agricultural Engineering, KMITL 
 ###########################################
+
 from machine import Pin, Timer
+import time
 import ujson
 import network
 from time import sleep
@@ -66,11 +68,12 @@ def status_blink(num):
         status_led.on()
         sleep(0.1)    
         status_led.off()
-        sleep(0.1)    
-
-i=0
+        sleep(0.1)
+        
+t = None
 def timerISR(timer):
-    global i
+    global i,t
+    err_status = 1 # No Error (One blink)
     try:
         sensor.measure()
         sensor_data = {
@@ -79,18 +82,29 @@ def timerISR(timer):
                 'humid': sensor.humidity()
                 }
             }
-        payload = ujson.dumps(sensor_data)
-        print('[', str(i),'] -->', payload)
-        client.publish('@shadow/data/update', payload)
-        status_blink(1)
-        i = i+1
     except:
-        print('[', str(i),'] Error')
-        status_blink(2)
+        sensor_data = None
+        err_status = 4 # Sensor error (4 blinks)
+        
+    payload = ujson.dumps(sensor_data)
+    print('-->', payload)
+
+    try:
+#        client.publish('@shadow/data/update', payload) #didn't work ?????
+        client.publish('@msg/n101', payload)  # Worked great!!!
+    except:
+        err_status = 3 # MQTT error (3 blinks)
+    
+    if err_status == 1:
+        t = time.localtime()
+    else:
+        print('Err', str(err_status),'at', str(t))
+    
+    status_blink(err_status)
 
 timer.init(period=5000, mode=Timer.PERIODIC, callback=timerISR)
 
 while True:
     pass
 
-client.disconnect()
+#client.disconnect()
