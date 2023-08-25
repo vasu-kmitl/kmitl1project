@@ -1,11 +1,9 @@
-#############################################
+###########################################
 # Node 101: Main node for the Greenhoude
 # KMITL One Project 2023
-# Rev. 1a - 25 Aug 2023
-#   Vasu Udompetaikul & 
-#   Ag Instru & IoT Class 1/2023
-#   Dept. of Agricultural Engineering, KMITL 
-#############################################
+# Ag Instrumentation & IoT Class 1/2023
+# Dept. of Agricultural Engineering, KMITL 
+###########################################
 
 from machine import Pin, Timer
 import time
@@ -16,10 +14,10 @@ from umqtt.simple import MQTTClient
 import dht
 
 # Use your WiFi Configuration
-WiFi_ssid = 'TInhuad_2G'
-WiFi_pwd = 'Patiparn'
-# WiFi_ssid = 'vNet'
-# WiFi_pwd = 'poiuytrewq'
+# WiFi_ssid = 'TInhuad_2G'
+# WiFi_pwd = 'Patiparn'
+WiFi_ssid = 'vNet'
+WiFi_pwd = 'poiuytrewq'
 
 # Use your NETPIE Device Configuration
 MQTT_BROKER    = 'mqtt.netpie.io'
@@ -53,14 +51,16 @@ while True:
 
 # Callback function for responding to the subscribed topics
 def on_message(topic,msg):
-    print("<-- ", end='')
-    print(msg)
+    m = ujson.loads(msg)
+#    print("<-- ", end='')
+#    print(ujson.loads(msg))
+#    print(m['data'])
 
 #client.setBufferSize(512) #Doesn't work / Find how to increase the buffer
 client.set_callback(on_message)
 client.subscribe('@shadow/data/updated')
 
-payload = ujson.dumps({'data':{'node':'101'}})
+payload = ujson.dumps({'data':{'node':'101','err_count':0}})
 client.publish('@shadow/data/update', payload)
 
 sensor = dht.DHT22(Pin(15))
@@ -79,14 +79,15 @@ def status_blink(num):
         sleep(0.05)    
         status_led.off()
         sleep(0.15)
-        
+
+err_count = 0
 t = time.localtime()
-t_str = ('{}:{}'.format(t[3], t[4]))
-#t_str = ('{}-{}-{} :{}:{}'.format(t[0],t[1],t[2],t[3],t[4],t[5]))
+#t_str = ('{}:{}'.format(t[3], t[4]))
+t_str = ('{}-{}-{} {}:{:02d}'.format(t[0],t[1],t[2],t[3],t[4]))
 print('Start at', t_str)
 
 def timerISR(timer):
-    global t, t_str
+    global t, t_str, err_count
     err_status = 1 # No Error (One blink)
     try:
         sensor.measure()
@@ -101,7 +102,7 @@ def timerISR(timer):
             }
         }
     payload = ujson.dumps(sensor_data)
-    print('-->', payload)
+    print(err_count, '-->', payload)
 
     try:
         client.publish('@shadow/data/update', payload)
@@ -114,6 +115,10 @@ def timerISR(timer):
         t_str = ('{}:{}'.format(t[3], t[4]))
     else:
         print('Err', str(err_status),'at', t_str)
+        payload = ujson.dumps({'data':{'err_count':err_count}})
+        client.publish('@shadow/data/update', payload)
+#        client.publish('@msg/101/err_count', str(err_count))
+        err_count += 1
     
     status_blink(err_status)
 
