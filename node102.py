@@ -150,4 +150,7 @@ print('Start at', t_str)
 # https://www.geeksforgeeks.org/python-time-localtime-method/
 
 while True:
-    client.check_msg()
+    try:
+        client.check_msg()
+    except:
+        pass
