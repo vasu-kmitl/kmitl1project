@@ -1,10 +1,9 @@
-###########################################
-# Node 101: Main node for the Greenhoude
-# KMITL One Project 2023           v.1a
+#######################################################
+# Node 101: Greenhouse Main node: Mode & Valve Control 
+# KMITL One Project 2023                        Ver.1a
 # Ag Instrumentation & IoT Class 1/2023
 # Dept. of Agricultural Engineering, KMITL 
-###########################################
-
+#######################################################
 from machine import Pin, Timer
 import time
 import ujson
