@@ -1,6 +1,6 @@
 ###########################################
 # Node 101: Main node for the Greenhoude
-# KMITL One Project 2023
+# KMITL One Project 2023           v.1a
 # Ag Instrumentation & IoT Class 1/2023
 # Dept. of Agricultural Engineering, KMITL 
 ###########################################
@@ -27,10 +27,11 @@ MQTT_SECRET    = 'sbgGDN17e96WAW1aMuNfsWZG38Gi5Wtk'
 #########################################################################
 # Configurations
 #########################################################################
-status_led = Pin(2,Pin.OUT) # Build-in LED
+status_led_pin = Pin(2,Pin.OUT) # Build-in LED
+valve_status_pin = Pin(4,Pin.OUT)
 err_count = 0
 
-shadow_data = {'node':'101', 'mode':'M', 'valve':False}
+shadow_data = {'node':'101', 'mode':'M', 'valve':0}
 
 #########################################################################
 # Defined Functions
@@ -60,22 +61,30 @@ def mqtt_connect():
         except:
             print('.', end='')
             sleep(0.5)
+    payload = ujson.dumps({'data':shadow_data})
+    client.publish('@shadow/data/update', payload)
+
     client.set_callback(on_message)
     client.subscribe('@shadow/data/updated')
+    client.subscribe('@msg/#')
 
 def status_blink(num):
     for i in range(num):
-        status_led.on()
+        status_led_pin.on()
         sleep(0.05)    
-        status_led.off()
+        status_led_pin.off()
         sleep(0.15)
         
 # Callback function for responding to the subscribed topics
 def on_message(topic,msg):
     m = ujson.loads(msg)
-#    print("<- ", end='')
-#    print(ujson.loads(msg))
-#    print(m['data'])
+#    print("received: ", ujson.loads(msg))
+    if m['data']['valve'] == 1:
+        valve_status_pin.on()
+        print('Valve #1: ON')
+    else:
+        valve_status_pin.off()
+        print('Valve #1: OFF')
 
 def timerISR(timer):
     global t, t_str, err_count
