@@ -1,35 +1,29 @@
+# https://wiki.dfrobot.com/ME007YS%20Waterproof%20Ultrasonic%20Sensor%20SKU:%20SEN0312#target_5
 # https://github.com/adafruit/Adafruit_Learning_System_Guides/blob/main/DYP_ultrasonics/me007ys.py
+
 import time
 from machine import UART
 
 uart = UART(2, 9600) # Rx/Tx 16/17
-uart.init(9600, bits=8, parity=None, stop=1) # init with given parameters
 
-def read_me007ys(ser, timeout = 1.0):
-    ts = time.monotonic()
-    buf = bytearray(3)
-    idx = 0
+def read_dist():    # Read the distance from ME007YS
+    timeout = 5.0
+    ts = time.time()
 
     while True:
-        # Option 1, we time out while waiting to get valid data
-        if time.monotonic() - ts > timeout:
+        if time.time() - ts > timeout:     # Set timeout error
             raise RuntimeError("Timed out waiting for data")
-
-        c = ser.read(1)[0]
-        #print(c)
-        if idx == 0 and c == 0xFF:
-            buf[0] = c
-            idx = idx + 1
-        elif 0 < idx < 3:
-            buf[idx] = c
-            idx = idx + 1
-        else:
-            chksum = sum(buf) & 0xFF
-            if chksum == c:
-                return (buf[1] << 8) + buf[2]
-            idx = 0
-    return None
+        
+        try:
+            header = uart.read(1)          # fine the header byte 0xFF 
+            if header[0] == 0xFF:
+                data = uart.read(2)        # read following 2 bytes for data
+                crc = uart.read(1)         # read the checksum byte
+                if crc[0] == sum(header + data) & 0xFF:		# compare the checksum
+                    return (data[0] << 8) + data[1]         # convert into distance and return the value
+        except:
+            pass    # skip reading errors (a lot)
 
 while True:
-    dist = read_me007ys(uart)
-    print("Distance = %d mm" % dist)
+    dist = read_dist()
+    print(dist,'mm')
